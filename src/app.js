@@ -30,10 +30,15 @@ const entraceSchema = joi.object({
 //Entrada
 app.post("/deposity", async (req, res) => {
   //usar o token
+  //trocar user pelo token ou email
   const User = req.headers;
   const userWithOutSpecLett = decodeURIComponent(escape(User.user));
 
-  if (!userWithOutSpecLett) {
+  console.log(
+    userWithOutSpecLett.length <= 0 || userWithOutSpecLett === undefined
+  );
+
+  if (!User.user) {
     res.status(422).send({ error: "Usuário necessário" });
     return;
   }
@@ -47,6 +52,24 @@ app.post("/deposity", async (req, res) => {
   }
 
   try {
+    const findBalanceUser = await db
+      .collection("balanceUsers")
+      .findOne({ user: userWithOutSpecLett });
+
+    if (!findBalanceUser) {
+      await db.collection("balanceUsers").insertOne({
+        user: userWithOutSpecLett,
+        balance: Number(req.body.value),
+      });
+    } else {
+      await db.collection("balanceUsers").updateOne(
+        {
+          user: userWithOutSpecLett,
+        },
+        { $inc: { balance: Number(req.body.value) } }
+      );
+    }
+
     const body = {
       user: userWithOutSpecLett,
       description: req.body.description,
@@ -67,7 +90,7 @@ app.post("/withdraw", async (req, res) => {
   const User = req.headers;
   const userWithOutSpecLett = decodeURIComponent(escape(User.user));
 
-  if (!User) {
+  if (!User.user) {
     res.status(422).send({ error: "Usuário necessário" });
     return;
   }
@@ -81,6 +104,24 @@ app.post("/withdraw", async (req, res) => {
   }
 
   try {
+    const findBalanceUser = await db
+      .collection("balanceUsers")
+      .findOne({ user: userWithOutSpecLett });
+
+    if (!findBalanceUser) {
+      await db.collection("balanceUsers").insertOne({
+        user: userWithOutSpecLett,
+        balance: -Number(req.body.value),
+      });
+    } else {
+      await db.collection("balanceUsers").updateOne(
+        {
+          user: userWithOutSpecLett,
+        },
+        { $inc: { balance: -Number(req.body.value) } }
+      );
+    }
+
     const body = {
       user: userWithOutSpecLett,
       description: req.body.description,
@@ -100,16 +141,22 @@ app.post("/withdraw", async (req, res) => {
 
 //pegar histórico
 app.get("/history", async (req, res) => {
-  const User = req.headers;
-  const UserlessCaracter = decodeURIComponent(escape(User.user));
-
-  if (!req.headers) {
-    res.status(422).send({ error: "Header necessário" });
-    return;
-  }
-
   try {
     const response = await db.collection("history").find().toArray();
+    const responseBalance = await db
+      .collection("balanceUsers")
+      .find()
+      .toArray();
+    res.send(response);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+});
+
+app.get("/balance", async (req, res) => {
+  try {
+    const response = await db.collection("balanceUsers").find().toArray();
     res.send(response);
   } catch (error) {
     console.log(error);
