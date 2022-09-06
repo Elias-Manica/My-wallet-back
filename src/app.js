@@ -3,6 +3,7 @@ import cors from "cors";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import joi from "joi";
+import dayjs from "dayjs";
 
 dotenv.config();
 
@@ -37,7 +38,7 @@ app.post("/deposity", async (req, res) => {
     return;
   }
 
-  const validation = entraceSchema.validate(req.body);
+  const validation = entraceSchema.validate(req.body, { abortEarly: false });
 
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
@@ -50,6 +51,7 @@ app.post("/deposity", async (req, res) => {
       user: userWithOutSpecLett,
       description: req.body.description,
       value: req.body.value,
+      date: `${dayjs(Date.now()).format("DD:MM")}`,
       type: "entrance",
     };
     await db.collection("history").insertOne(body);
@@ -65,12 +67,12 @@ app.post("/withdraw", async (req, res) => {
   const User = req.headers;
   const userWithOutSpecLett = decodeURIComponent(escape(User.user));
 
-  if (!userWithOutSpecLett) {
+  if (!User) {
     res.status(422).send({ error: "Usuário necessário" });
     return;
   }
 
-  const validation = entraceSchema.validate(req.body);
+  const validation = entraceSchema.validate(req.body, { abortEarly: false });
 
   if (validation.error) {
     const errors = validation.error.details.map((detail) => detail.message);
@@ -83,6 +85,7 @@ app.post("/withdraw", async (req, res) => {
       user: userWithOutSpecLett,
       description: req.body.description,
       value: req.body.value,
+      date: `${dayjs(Date.now()).format("DD:MM")}`,
       type: "withdraw",
     };
     await db.collection("history").insertOne(body);
@@ -98,10 +101,10 @@ app.post("/withdraw", async (req, res) => {
 //pegar histórico
 app.get("/history", async (req, res) => {
   const User = req.headers;
-  const userWithOutSpecLett = decodeURIComponent(escape(User.user));
+  const UserlessCaracter = decodeURIComponent(escape(User.user));
 
-  if (!userWithOutSpecLett) {
-    res.status(422).send({ error: "Usuário necessário" });
+  if (!req.headers) {
+    res.status(422).send({ error: "Header necessário" });
     return;
   }
 
