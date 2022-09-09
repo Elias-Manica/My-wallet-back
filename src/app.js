@@ -330,7 +330,17 @@ app.get("/balance", async (req, res) => {
         .collection("balanceUsers")
         .findOne({ userId: user._id });
 
-      res.send({ EmailUser: user.email, balance: balanceUsers.balance });
+      let balance = 0;
+
+      if (balanceUsers) {
+        balance = balanceUsers.balance;
+      }
+
+      res.send({
+        name: user.name,
+        EmailUser: user.email,
+        balance,
+      });
       return;
     } else {
       res.status(404).send({ message: "Token inválido" });
