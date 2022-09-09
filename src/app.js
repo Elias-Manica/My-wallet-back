@@ -169,7 +169,7 @@ app.post("/transition", async (req, res) => {
 
       delete user.password;
 
-      await db.collection("history").insertOne({
+      await db.collection("transition").insertOne({
         idPerson: user._id,
         value,
         description,
@@ -228,7 +228,7 @@ app.post("/transition", async (req, res) => {
         return;
       }
     } else {
-      res.status(404).send({ message: "Usuário não logado" });
+      res.status(404).send({ message: "Token inválido" });
       return;
     }
   } catch (error) {
@@ -238,127 +238,40 @@ app.post("/transition", async (req, res) => {
   }
 });
 
-//Entrada
-app.post("/deposity", async (req, res) => {
-  //usar o token
-  //trocar user pelo token ou email
-  const User = req.headers;
-  const userWithOutSpecLett = decodeURIComponent(escape(User.user));
-
-  console.log(
-    userWithOutSpecLett.length <= 0 || userWithOutSpecLett === undefined
-  );
-
-  if (!User.user) {
-    res.status(422).send({ error: "Usuário necessário" });
-    return;
-  }
-
-  const validation = entraceSchema.validate(req.body, { abortEarly: false });
-
-  if (validation.error) {
-    const errors = validation.error.details.map((detail) => detail.message);
-    res.status(422).send(errors);
-    return;
-  }
-
-  try {
-    const findBalanceUser = await db
-      .collection("balanceUsers")
-      .findOne({ user: userWithOutSpecLett });
-
-    if (!findBalanceUser) {
-      await db.collection("balanceUsers").insertOne({
-        user: userWithOutSpecLett,
-        balance: Number(req.body.value),
-      });
-    } else {
-      await db.collection("balanceUsers").updateOne(
-        {
-          user: userWithOutSpecLett,
-        },
-        { $inc: { balance: Number(req.body.value) } }
-      );
-    }
-
-    const body = {
-      user: userWithOutSpecLett,
-      description: req.body.description,
-      value: req.body.value,
-      date: `${dayjs(Date.now()).format("DD:MM")}`,
-      type: "entrance",
-    };
-    await db.collection("history").insertOne(body);
-    res.status(201).send({ message: `R$${req.body.value} depositado` });
-  } catch (error) {
-    console.log(error);
-    res.sendStatus(500);
-  }
-});
-
-//Saida
-app.post("/withdraw", async (req, res) => {
-  const User = req.headers;
-  const userWithOutSpecLett = decodeURIComponent(escape(User.user));
-
-  if (!User.user) {
-    res.status(422).send({ error: "Usuário necessário" });
-    return;
-  }
-
-  const validation = entraceSchema.validate(req.body, { abortEarly: false });
-
-  if (validation.error) {
-    const errors = validation.error.details.map((detail) => detail.message);
-    res.status(422).send(errors);
-    return;
-  }
-
-  try {
-    const findBalanceUser = await db
-      .collection("balanceUsers")
-      .findOne({ user: userWithOutSpecLett });
-
-    if (!findBalanceUser) {
-      await db.collection("balanceUsers").insertOne({
-        user: userWithOutSpecLett,
-        balance: -Number(req.body.value),
-      });
-    } else {
-      await db.collection("balanceUsers").updateOne(
-        {
-          user: userWithOutSpecLett,
-        },
-        { $inc: { balance: -Number(req.body.value) } }
-      );
-    }
-
-    const body = {
-      user: userWithOutSpecLett,
-      description: req.body.description,
-      value: req.body.value,
-      date: `${dayjs(Date.now()).format("DD:MM")}`,
-      type: "withdraw",
-    };
-    await db.collection("history").insertOne(body);
-    res
-      .status(201)
-      .send({ message: `R$${req.body.value} retirado da carteira` });
-  } catch (error) {
-    console.log(error);
-    res.sendStatus(500);
-  }
-});
-
 //pegar histórico
-app.get("/history", async (req, res) => {
+app.get("/transition", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+
+  if (!token) {
+    res.status(401).send({ message: "Token de acesso não enviado" });
+    return;
+  }
+
   try {
-    const response = await db.collection("history").find().toArray();
-    const responseBalance = await db
-      .collection("balanceUsers")
-      .find()
-      .toArray();
-    res.send(response);
+    const activeSession = await db.collection("sessions").findOne({
+      token,
+    });
+
+    if (activeSession) {
+      const user = await db.collection("users").findOne({
+        _id: activeSession.userId,
+      });
+
+      const transitionsUsers = await db
+        .collection("transition")
+        .find()
+        .toArray();
+
+      const transitionFiltered = transitionsUsers.filter(
+        (value) => value.idPerson.toHexString() === user._id.toHexString()
+      );
+
+      res.send(transitionFiltered.reverse());
+      return;
+    } else {
+      res.status(404).send({ message: "Token inválido" });
+      return;
+    }
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
@@ -366,9 +279,33 @@ app.get("/history", async (req, res) => {
 });
 
 app.get("/balance", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+
+  if (!token) {
+    res.status(401).send({ message: "Token de acesso não enviado" });
+    return;
+  }
+
   try {
-    const response = await db.collection("balanceUsers").find().toArray();
-    res.send(response);
+    const activeSession = await db.collection("sessions").findOne({
+      token,
+    });
+
+    if (activeSession) {
+      const user = await db.collection("users").findOne({
+        _id: activeSession.userId,
+      });
+
+      const balanceUsers = await db
+        .collection("balanceUsers")
+        .findOne({ userId: user._id });
+
+      res.send({ EmailUser: user.email, balance: balanceUsers.balance });
+      return;
+    } else {
+      res.status(404).send({ message: "Token inválido" });
+      return;
+    }
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
