@@ -28,6 +28,7 @@ const entraceSchema = joi.object({
     .required()
     .empty("")
     .regex(/[a-zA-Z0-9]/),
+  type: joi.string().required().valid("deposity", "withdraw"),
 });
 
 const singupSchema = joi.object({
@@ -137,7 +138,105 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.post("/transition", async (req, res) => {});
+app.post("/transition", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  const { value, description, type } = req.body;
+
+  if (!token) {
+    res.status(401).send({ message: "Token de acesso não enviado" });
+    return;
+  }
+
+  const validation = entraceSchema.validate(req.body, { abortEarly: false });
+
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    res.status(422).send(errors);
+    return;
+  }
+
+  try {
+    const activeSession = await db.collection("sessions").findOne({
+      token,
+    });
+
+    if (activeSession) {
+      console.log(activeSession);
+
+      const user = await db.collection("users").findOne({
+        _id: activeSession.userId,
+      });
+
+      delete user.password;
+
+      await db.collection("history").insertOne({
+        idPerson: user._id,
+        value,
+        description,
+        type,
+        date: `${dayjs(Date.now()).format("DD:MM")}`,
+      });
+
+      const findBalanceUser = await db.collection("balanceUsers").findOne({
+        userId: user._id,
+      });
+
+      if (findBalanceUser) {
+        if (type === "deposity") {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: user._id,
+            },
+            { $inc: { balance: Number(value) } }
+          );
+
+          res.status(201).send({
+            value,
+            description,
+            type,
+            date: `${dayjs(Date.now()).format("DD:MM")}`,
+          });
+          return;
+        } else {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: user._id,
+            },
+            { $inc: { balance: -Number(value) } }
+          );
+
+          res.status(201).send({
+            value,
+            description,
+            type,
+            date: `${dayjs(Date.now()).format("DD:MM")}`,
+          });
+          return;
+        }
+      } else {
+        await db.collection("balanceUsers").insertOne({
+          userId: user._id,
+          balance: Number(value),
+        });
+
+        res.status(201).send({
+          value,
+          description,
+          type,
+          date: `${dayjs(Date.now()).format("DD:MM")}`,
+        });
+        return;
+      }
+    } else {
+      res.status(404).send({ message: "Usuário não logado" });
+      return;
+    }
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+    return;
+  }
+});
 
 //Entrada
 app.post("/deposity", async (req, res) => {
