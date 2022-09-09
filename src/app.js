@@ -138,6 +138,36 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.post("/sing-out", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+
+  if (!token) {
+    res.status(401).send({ message: "Token de acesso não enviado" });
+    return;
+  }
+
+  try {
+    const activeSession = await db.collection("sessions").findOne({
+      token,
+    });
+
+    if (activeSession) {
+      await db.collection("sessions").deleteOne({
+        token,
+      });
+      res.send({ message: "Sessão encerrada" });
+      return;
+    } else {
+      res.status(404).send({ message: "Nenhum usuário foi encontrado" });
+      return;
+    }
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+    return;
+  }
+});
+
 app.post("/transition", async (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   const { value, description, type } = req.body;
