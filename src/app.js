@@ -118,14 +118,14 @@ app.post("/login", async (req, res) => {
           { $set: { token: token } }
         );
         console.log(update);
-        res.status(200).send(token);
+        res.status(200).send({ email: findUser.email, token });
         return;
       } else {
         await db.collection("sessions").insertOne({
           userId: findUser._id,
           token,
         });
-        res.status(200).send(token);
+        res.status(200).send({ email: findUser.email, token });
         return;
       }
     } else {
