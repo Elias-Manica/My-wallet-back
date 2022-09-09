@@ -110,14 +110,14 @@ app.post("/login", async (req, res) => {
         const response = await db.collection("sessions").findOne({
           userId: findUser._id,
         });
-        console.log(response);
+
         const update = await db.collection("sessions").updateOne(
           {
             userId: findUser._id,
           },
           { $set: { token: token } }
         );
-        console.log(update);
+
         res.status(200).send({ email: findUser.email, token });
         return;
       } else {
@@ -137,6 +137,7 @@ app.post("/login", async (req, res) => {
     return;
   }
 });
+//a
 
 app.post("/sing-out", async (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -191,8 +192,6 @@ app.post("/transition", async (req, res) => {
     });
 
     if (activeSession) {
-      console.log(activeSession);
-
       const user = await db.collection("users").findOne({
         _id: activeSession.userId,
       });
@@ -204,7 +203,7 @@ app.post("/transition", async (req, res) => {
         value,
         description,
         type,
-        date: `${dayjs(Date.now()).format("DD:MM")}`,
+        date: `${dayjs(Date.now()).format("DD/MM")}`,
       });
 
       const findBalanceUser = await db.collection("balanceUsers").findOne({
@@ -212,22 +211,7 @@ app.post("/transition", async (req, res) => {
       });
 
       if (findBalanceUser) {
-        if (type === "deposity") {
-          await db.collection("balanceUsers").updateOne(
-            {
-              userId: user._id,
-            },
-            { $inc: { balance: Number(value) } }
-          );
-
-          res.status(201).send({
-            value,
-            description,
-            type,
-            date: `${dayjs(Date.now()).format("DD:MM")}`,
-          });
-          return;
-        } else {
+        if (type === "withdraw") {
           await db.collection("balanceUsers").updateOne(
             {
               userId: user._id,
@@ -236,26 +220,56 @@ app.post("/transition", async (req, res) => {
           );
 
           res.status(201).send({
-            value,
+            value: -Number(value),
             description,
             type,
-            date: `${dayjs(Date.now()).format("DD:MM")}`,
+            date: `${dayjs(Date.now()).format("DD/MM")}`,
+          });
+          return;
+        } else {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: user._id,
+            },
+            { $inc: { balance: Number(value) } }
+          );
+
+          res.status(201).send({
+            value: Number(value),
+            description,
+            type,
+            date: `${dayjs(Date.now()).format("DD/MM")}`,
           });
           return;
         }
       } else {
-        await db.collection("balanceUsers").insertOne({
-          userId: user._id,
-          balance: Number(value),
-        });
+        if (type === "withdraw") {
+          await db.collection("balanceUsers").insertOne({
+            userId: user._id,
+            balance: -Number(value),
+          });
 
-        res.status(201).send({
-          value,
-          description,
-          type,
-          date: `${dayjs(Date.now()).format("DD:MM")}`,
-        });
-        return;
+          res.status(201).send({
+            value: -Number(value),
+            description,
+            type,
+            date: `${dayjs(Date.now()).format("DD/MM")}`,
+          });
+          return;
+        } else {
+          await db.collection("balanceUsers").insertOne({
+            userId: user._id,
+            balance: Number(value),
+          });
+
+          res.status(201).send({
+            value: Number(value),
+            description,
+            type,
+            date: `${dayjs(Date.now()).format("DD/MM")}`,
+          });
+          return;
+        }
       }
     } else {
       res.status(404).send({ message: "Token inválido" });
