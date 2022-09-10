@@ -47,6 +47,27 @@ const entraceSchema = joi.object({
   }),
 });
 
+const updateEntraceSchema = joi.object({
+  value: joi.number().required().positive().messages({
+    "number.positive": "O número deve ser positivo",
+    "number.base": "O valor deve ser um número",
+    "any.required": "Passar o valor é obrigatório",
+  }),
+  description: joi
+    .string()
+    .required()
+    .empty("")
+    .regex(/[a-zA-Z0-9]/)
+    .messages({
+      "string.empty": "A descrição não pode ser vazia",
+      "string.base": "A descrição deve ser um texto",
+      "any.required": "Passar a descrição é obrigatório",
+      "object.regex": "Essa descrição não deve ser utilizada",
+      "string.pattern.base": "A descrição deve ter pelo menos uma letra",
+    }),
+  id: joi.string(),
+});
+
 const singupSchema = joi.object({
   name: joi
     .string()
@@ -442,6 +463,62 @@ app.delete("/delete", async (req, res) => {
         await db.collection("transition").deleteOne({ _id: ObjectId(id) });
 
         res.send({ message: "Transição deletada" });
+        return;
+      } else {
+        res.send({ message: "Não foi possível achar essa transição" });
+        return;
+      }
+    } else {
+      res.status(404).send({ message: "Token inválido" });
+      return;
+    }
+  } catch (error) {
+    res
+      .status(401)
+      .send({ message: "Erro no servidor ou no formato do ID enviado" });
+    return;
+  }
+});
+
+app.put("/transition", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  const { id } = req.body;
+
+  if (!token) {
+    res.status(401).send({ message: "Token de acesso não enviado" });
+    return;
+  }
+
+  if (!id) {
+    res.status(404).send({ message: "Id não enviado" });
+    return;
+  }
+
+  const validation = updateEntraceSchema.validate(req.body, {
+    abortEarly: false,
+  });
+
+  if (validation.error) {
+    const errors = validation.error.details.map((detail) => detail.message);
+    res.status(422).send(errors);
+    return;
+  }
+
+  try {
+    const activeSession = await db.collection("sessions").findOne({
+      token,
+    });
+
+    if (activeSession) {
+      const transitionToBeUpdate = await db.collection("transition").findOne({
+        _id: ObjectId(id),
+      });
+      if (transitionToBeUpdate) {
+        await db
+          .collection("transition")
+          .updateOne({ _id: ObjectId(id) }, { $set: req.body });
+
+        res.send({ message: "Transição modificada" });
         return;
       } else {
         res.send({ message: "Não foi possível achar essa transição" });
