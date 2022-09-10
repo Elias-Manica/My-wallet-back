@@ -22,13 +22,29 @@ mongoClient.connect().then(() => {
 });
 
 const entraceSchema = joi.object({
-  value: joi.number().required().positive(),
+  value: joi.number().required().positive().messages({
+    "number.positive": "O número deve ser positivo",
+    "number.base": "O valor deve ser um número",
+    "any.required": "Passar o valor é obrigatório",
+  }),
   description: joi
     .string()
     .required()
     .empty("")
-    .regex(/[a-zA-Z0-9]/),
-  type: joi.string().required().valid("deposity", "withdraw"),
+    .regex(/[a-zA-Z0-9]/)
+    .messages({
+      "string.empty": "A descrição não pode ser vazia",
+      "string.base": "A descrição deve ser um texto",
+      "any.required": "Passar a descrição é obrigatório",
+      "object.regex": "Essa descrição não deve ser utilizada",
+      "string.pattern.base": "A descrição deve ter pelo menos uma letra",
+    }),
+  type: joi.string().required().valid("deposity", "withdraw").messages({
+    "number.base": "O tipo deve ser um número",
+    "any.required": "Passar o tipo é obrigatório",
+    "string.empty": "O tipo não pode ser vazio",
+    "any.only": `O tipo só pode ser "deposity" ou "withdraw"`,
+  }),
 });
 
 const singupSchema = joi.object({
@@ -36,22 +52,53 @@ const singupSchema = joi.object({
     .string()
     .required()
     .empty("")
-    .regex(/[a-zA-Z0-9]/),
-  email: joi.string().required().empty("").email(),
+    .regex(/[a-zA-Z0-9]/)
+    .messages({
+      "string.empty": "O nome não pode ser vazio",
+      "string.base": "O nome deve ser um texto",
+      "any.required": "Passar o nome é obrigatório",
+      "object.regex": "Esse nome não deve ser utilizado",
+      "string.pattern.base": "O nome deve ter pelo menos uma letra",
+    }),
+  email: joi.string().required().empty("").email().messages({
+    "string.empty": "O email não pode ser vazio",
+    "string.base": "O email deve ser um texto",
+    "any.required": "Passar o email é obrigatório",
+    "string.email": "Este não é um email válido",
+  }),
   password: joi
     .string()
     .required()
     .empty("")
-    .regex(/[a-zA-Z0-9]/),
+    .regex(/[a-zA-Z0-9]/)
+    .messages({
+      "string.empty": "A senha não pode ser vazia",
+      "string.base": "A senha deve ser um texto",
+      "any.required": "Passar a senha é obrigatório",
+      "object.regex": "Essa senha não deve ser utilizada",
+      "string.pattern.base": "A senha deve ter pelo menos uma letra",
+    }),
 });
 
 const loginSchema = joi.object({
-  email: joi.string().required().empty("").email(),
+  email: joi.string().required().empty("").email().messages({
+    "string.empty": "O email não pode ser vazio",
+    "string.base": "O email deve ser um texto",
+    "any.required": "Passar o email é obrigatório",
+    "string.email": "Este não é um email válido",
+  }),
   password: joi
     .string()
     .required()
     .empty("")
-    .regex(/[a-zA-Z0-9]/),
+    .regex(/[a-zA-Z0-9]/)
+    .messages({
+      "string.empty": "A senha não pode ser vazia",
+      "string.base": "A senha deve ser um texto",
+      "any.required": "Passar a senha é obrigatório",
+      "object.regex": "Essa senha não deve ser utilizada",
+      "string.pattern.base": "A senha deve ter pelo menos uma letra",
+    }),
 });
 
 //Cadastro
