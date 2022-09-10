@@ -434,7 +434,7 @@ app.get("/balance", async (req, res) => {
   }
 });
 
-app.delete("/delete", async (req, res) => {
+app.delete("/transition", async (req, res) => {
   const token = req.headers.authorization?.replace("Bearer ", "");
   const { id } = req.body;
 
@@ -462,10 +462,30 @@ app.delete("/delete", async (req, res) => {
       if (transitionToBeDeleted) {
         await db.collection("transition").deleteOne({ _id: ObjectId(id) });
 
+        console.log(transitionToBeDeleted);
+
+        if (transitionToBeDeleted.type === "deposity") {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: transitionToBeDeleted.idPerson,
+            },
+            { $inc: { balance: -Number(transitionToBeDeleted.value) } }
+          );
+        } else {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: transitionToBeDeleted.idPerson,
+            },
+            { $inc: { balance: Number(transitionToBeDeleted.value) } }
+          );
+        }
+
         res.send({ message: "Transição deletada" });
         return;
       } else {
-        res.send({ message: "Não foi possível achar essa transição" });
+        res
+          .status(404)
+          .send({ message: "Não foi possível achar essa transição" });
         return;
       }
     } else {
