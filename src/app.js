@@ -448,8 +448,6 @@ app.delete("/transition", async (req, res) => {
     return;
   }
 
-  console.log(id);
-
   try {
     const activeSession = await db.collection("sessions").findOne({
       token,
@@ -461,8 +459,6 @@ app.delete("/transition", async (req, res) => {
       });
       if (transitionToBeDeleted) {
         await db.collection("transition").deleteOne({ _id: ObjectId(id) });
-
-        console.log(transitionToBeDeleted);
 
         if (transitionToBeDeleted.type === "deposity") {
           await db.collection("balanceUsers").updateOne(
@@ -537,6 +533,30 @@ app.put("/transition", async (req, res) => {
         await db
           .collection("transition")
           .updateOne({ _id: ObjectId(id) }, { $set: req.body });
+
+        if (transitionToBeUpdate.type === "deposity") {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: transitionToBeUpdate.idPerson,
+            },
+            {
+              $inc: {
+                balance: Number(req.body.value - transitionToBeUpdate.value),
+              },
+            }
+          );
+        } else {
+          await db.collection("balanceUsers").updateOne(
+            {
+              userId: transitionToBeUpdate.idPerson,
+            },
+            {
+              $inc: {
+                balance: -Number(req.body.value - transitionToBeUpdate.value),
+              },
+            }
+          );
+        }
 
         res.send({ message: "Transição modificada" });
         return;
