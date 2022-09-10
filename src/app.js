@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import joi from "joi";
 import dayjs from "dayjs";
@@ -410,6 +410,52 @@ app.get("/balance", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
+  }
+});
+
+app.delete("/delete", async (req, res) => {
+  const token = req.headers.authorization?.replace("Bearer ", "");
+  const { id } = req.body;
+
+  if (!token) {
+    res.status(401).send({ message: "Token de acesso não enviado" });
+    return;
+  }
+
+  if (!id) {
+    res.status(404).send({ message: "Id não enviado" });
+    return;
+  }
+
+  console.log(id);
+
+  try {
+    const activeSession = await db.collection("sessions").findOne({
+      token,
+    });
+
+    if (activeSession) {
+      const transitionToBeDeleted = await db.collection("transition").findOne({
+        _id: ObjectId(id),
+      });
+      if (transitionToBeDeleted) {
+        await db.collection("transition").deleteOne({ _id: ObjectId(id) });
+
+        res.send({ message: "Transição deletada" });
+        return;
+      } else {
+        res.send({ message: "Não foi possível achar essa transição" });
+        return;
+      }
+    } else {
+      res.status(404).send({ message: "Token inválido" });
+      return;
+    }
+  } catch (error) {
+    res
+      .status(401)
+      .send({ message: "Erro no servidor ou no formato do ID enviado" });
+    return;
   }
 });
 
