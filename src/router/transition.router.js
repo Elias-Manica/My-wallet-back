@@ -1,5 +1,7 @@
 import express from "express";
 
+import hasToken from "../middlewares/transition.middlewares.js";
+
 import {
   createTransition,
   getTransitions,
@@ -9,6 +11,8 @@ import {
 } from "../controllers/user.controller.js";
 
 const router = express.Router();
+
+router.use(hasToken);
 
 router.post("/transition", createTransition);
 

@@ -53,13 +53,8 @@ const updateEntraceSchema = joi.object({
 });
 
 async function createTransition(req, res) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
+  const token = res.locals.token;
   const { value, description, type } = req.body;
-
-  if (!token) {
-    res.status(401).send({ message: "Token de acesso não enviado" });
-    return;
-  }
 
   const validation = entraceSchema.validate(req.body, { abortEarly: false });
 
@@ -160,19 +155,14 @@ async function createTransition(req, res) {
     }
   } catch (error) {
     console.log(error);
-    res.sendStatus(500);
+    res.status(500).send({ message: "erro no servidor" });
     return;
   }
 }
 
 async function deleteTransition(req, res) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
+  const token = res.locals.token;
   const { id } = req.body;
-
-  if (!token) {
-    res.status(401).send({ message: "Token de acesso não enviado" });
-    return;
-  }
 
   if (!id) {
     res.status(404).send({ message: "Id não enviado" });
@@ -228,12 +218,7 @@ async function deleteTransition(req, res) {
 }
 
 async function getTransitions(req, res) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-
-  if (!token) {
-    res.status(401).send({ message: "Token de acesso não enviado" });
-    return;
-  }
+  const token = res.locals.token;
 
   try {
     const activeSession = await db.collection("sessions").findOne({
@@ -267,13 +252,8 @@ async function getTransitions(req, res) {
 }
 
 async function updateTransition(req, res) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
+  const token = res.locals.token;
   const { id } = req.body;
-
-  if (!token) {
-    res.status(401).send({ message: "Token de acesso não enviado" });
-    return;
-  }
 
   if (!id) {
     res.status(404).send({ message: "Id não enviado" });
@@ -347,12 +327,7 @@ async function updateTransition(req, res) {
 }
 
 async function getBalance(req, res) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-
-  if (!token) {
-    res.status(401).send({ message: "Token de acesso não enviado" });
-    return;
-  }
+  const token = res.locals.token;
 
   try {
     const activeSession = await db.collection("sessions").findOne({
