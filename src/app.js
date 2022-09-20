@@ -12,4 +12,6 @@ app.use(authRouter);
 
 app.use(userRouter);
 
-app.listen(5000, () => console.log("Server listen on port 5000"));
+app.listen(process.env.PORT, () =>
+  console.log(`Server listen on port ${process.env.PORT}`)
+);
